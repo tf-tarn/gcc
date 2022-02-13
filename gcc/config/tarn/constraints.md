@@ -1,6 +1,6 @@
 ;; Constraint definitions for Moxie
 ;; Copyright (C) 2009-2021 Free Software Foundation, Inc.
-;; Contributed by Anthony Green <green@moxielogic.com>
+;; Contributed by Anthony Green <green@tarnlogic.com>
 
 ;; This file is part of GCC.
 
@@ -32,7 +32,11 @@
 (define_constraint "B"
   "An offset address."
   (and (match_code "mem")
-       (match_test "moxie_offset_address_p (op)")))
+       (match_test "tarn_offset_address_p (op)")))
+
+(define_register_constraint "R" "ALL_REGS"
+  "Any register.")
+
 
 (define_constraint "W"
   "A register indirect memory operand."

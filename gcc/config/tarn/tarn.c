@@ -1,4 +1,4 @@
-/* Target Code for moxie
+/* Target Code for tarn
    Copyright (C) 2008-2021 Free Software Foundation, Inc.
    Contributed by Anthony Green.
 
@@ -47,53 +47,56 @@
 #define LOSE_AND_RETURN(msgid, x)		\
   do						\
     {						\
-      moxie_operand_lossage (msgid, x);		\
+      tarn_operand_lossage (msgid, x);		\
       return;					\
     } while (0)
 
 /* Worker function for TARGET_RETURN_IN_MEMORY.  */
 
 static bool
-moxie_return_in_memory (const_tree type, const_tree fntype ATTRIBUTE_UNUSED)
+tarn_return_in_memory (const_tree type, const_tree fntype ATTRIBUTE_UNUSED)
 {
   const HOST_WIDE_INT size = int_size_in_bytes (type);
-  return (size == -1 || size > 2 * UNITS_PER_WORD);
+  fprintf(stderr, "CALL: tarn_return_in_memory: %d\n", size);
+  return (size > UNITS_PER_WORD);
 }
 
 /* Define how to find the value returned by a function.
    VALTYPE is the data type of the value (as a tree).
    If the precise function being called is known, FUNC is its
-   FUNCTION_DECL; otherwise, FUNC is 0.  
+   FUNCTION_DECL; otherwise, FUNC is 0.
 
-   We always return values in register $r0 for moxie.  */
+   We always return values in register $r0 for tarn.  */
 
 static rtx
-moxie_function_value (const_tree valtype, 
+tarn_function_value (const_tree valtype,
 		      const_tree fntype_or_decl ATTRIBUTE_UNUSED,
 		      bool outgoing ATTRIBUTE_UNUSED)
 {
-  return gen_rtx_REG (TYPE_MODE (valtype), MOXIE_R0);
+    fprintf(stderr, "CALL: tarn_function_value\n");
+    return gen_rtx_REG (TYPE_MODE (valtype), TARN_STACK);
 }
 
 /* Define how to find the value returned by a library function.
 
-   We always return values in register $r0 for moxie.  */
+   We always return values in register $r0 for tarn.  */
 
 static rtx
-moxie_libcall_value (machine_mode mode,
+tarn_libcall_value (machine_mode mode,
                      const_rtx fun ATTRIBUTE_UNUSED)
 {
-  return gen_rtx_REG (mode, MOXIE_R0);
+    fprintf(stderr, "CALL: tarn_libcall_value\n");
+    return gen_rtx_REG (mode, TARN_STACK);
 }
 
 /* Handle TARGET_FUNCTION_VALUE_REGNO_P.
 
-   We always return values in register $r0 for moxie.  */
+   We always return values in register $r0 for tarn.  */
 
 static bool
-moxie_function_value_regno_p (const unsigned int regno)
+tarn_function_value_regno_p (const unsigned int regno)
 {
-  return (regno == MOXIE_R0);
+  return (regno == TARN_STACK);
 }
 
 /* Emit an error message when we're in an asm, and a fatal error for
@@ -102,7 +105,7 @@ moxie_function_value_regno_p (const unsigned int regno)
    categorization of the error.  */
 
 static void
-moxie_operand_lossage (const char *msgid, rtx op)
+tarn_operand_lossage (const char *msgid, rtx op)
 {
   debug_rtx (op);
   output_operand_lossage ("%s", msgid);
@@ -111,19 +114,19 @@ moxie_operand_lossage (const char *msgid, rtx op)
 /* The PRINT_OPERAND_ADDRESS worker.  */
 
 static void
-moxie_print_operand_address (FILE *file, machine_mode, rtx x)
+tarn_print_operand_address (FILE *file, machine_mode, rtx x)
 {
   switch (GET_CODE (x))
     {
     case REG:
       fprintf (file, "(%s)", reg_names[REGNO (x)]);
       break;
-      
+
     case PLUS:
       switch (GET_CODE (XEXP (x, 1)))
 	{
 	case CONST_INT:
-	  fprintf (file, "%ld(%s)", 
+	  fprintf (file, "%ld(%s)",
 		   INTVAL(XEXP (x, 1)), reg_names[REGNO (XEXP (x, 0))]);
 	  break;
 	case SYMBOL_REF:
@@ -133,7 +136,7 @@ moxie_print_operand_address (FILE *file, machine_mode, rtx x)
 	case CONST:
 	  {
 	    rtx plus = XEXP (XEXP (x, 1), 0);
-	    if (GET_CODE (XEXP (plus, 0)) == SYMBOL_REF 
+	    if (GET_CODE (XEXP (plus, 0)) == SYMBOL_REF
 		&& CONST_INT_P (XEXP (plus, 1)))
 	      {
 		output_addr_const(file, XEXP (plus, 0));
@@ -158,7 +161,7 @@ moxie_print_operand_address (FILE *file, machine_mode, rtx x)
 /* The PRINT_OPERAND worker.  */
 
 static void
-moxie_print_operand (FILE *file, rtx x, int code)
+tarn_print_operand (FILE *file, rtx x, int code)
 {
   rtx operand = x;
 
@@ -182,7 +185,7 @@ moxie_print_operand (FILE *file, rtx x, int code)
   switch (GET_CODE (operand))
     {
     case REG:
-      if (REGNO (operand) > MOXIE_R13)
+      if (REGNO (operand) > TARN_ZERO)
 	internal_error ("internal error: bad register: %d", REGNO (operand));
       fprintf (file, "%s", reg_names[REGNO (operand)]);
       return;
@@ -221,7 +224,7 @@ struct GTY(()) machine_function
 /* Zero initialization is OK for all current fields.  */
 
 static struct machine_function *
-moxie_init_machine_status (void)
+tarn_init_machine_status (void)
 {
   return ggc_cleared_alloc<machine_function> ();
 }
@@ -229,12 +232,12 @@ moxie_init_machine_status (void)
 
 /* The TARGET_OPTION_OVERRIDE worker.  */
 static void
-moxie_option_override (void)
+tarn_option_override (void)
 {
   /* Set the per-function-data initializer.  */
-  init_machine_status = moxie_init_machine_status;
+  init_machine_status = tarn_init_machine_status;
 
-#ifdef TARGET_MOXIEBOX  
+#ifdef TARGET_TARNBOX
   target_flags |= MASK_HAS_MULX;
 #endif
 }
@@ -243,12 +246,14 @@ moxie_option_override (void)
  * prologue and epilogue.  */
 
 static void
-moxie_compute_frame (void)
+tarn_compute_frame (void)
 {
+    return;
   /* For aligning the local variables.  */
   int stack_alignment = STACK_BOUNDARY / BITS_PER_UNIT;
   int padding_locals;
   int regno;
+  fprintf(stderr, "CALL: tarn_compute_frame\n");
 
   /* Padding needed for each element of the frame.  */
   cfun->machine->local_vars_size = get_frame_size ();
@@ -267,20 +272,21 @@ moxie_compute_frame (void)
     if (df_regs_ever_live_p (regno) && (! call_used_or_fixed_reg_p (regno)))
       cfun->machine->callee_saved_reg_size += 4;
 
-  cfun->machine->size_for_adjusting_sp = 
+  cfun->machine->size_for_adjusting_sp =
     crtl->args.pretend_args_size
-    + cfun->machine->local_vars_size 
+    + cfun->machine->local_vars_size
     + (ACCUMULATE_OUTGOING_ARGS
        ? (HOST_WIDE_INT) crtl->outgoing_args_size : 0);
 }
 
 void
-moxie_expand_prologue (void)
+tarn_expand_prologue (void)
 {
   int regno;
   rtx insn;
+  fprintf(stderr, "CALL: tarn_expand_prologue\n");
 
-  moxie_compute_frame ();
+  tarn_compute_frame ();
 
   if (flag_stack_usage_info)
     current_function_static_stack_size = cfun->machine->size_for_adjusting_sp;
@@ -291,36 +297,36 @@ moxie_expand_prologue (void)
       if (df_regs_ever_live_p (regno)
 	  && !call_used_or_fixed_reg_p (regno))
 	{
-	  insn = emit_insn (gen_movsi_push (gen_rtx_REG (Pmode, regno)));
+	  insn = emit_insn (gen_movqi_push (gen_rtx_REG (QImode, regno)));
 	  RTX_FRAME_RELATED_P (insn) = 1;
 	}
     }
 
   if (cfun->machine->size_for_adjusting_sp > 0)
     {
-      int i = cfun->machine->size_for_adjusting_sp; 
+      int i = cfun->machine->size_for_adjusting_sp;
       while ((i >= 255) && (i <= 510))
 	{
-	  insn = emit_insn (gen_subsi3 (stack_pointer_rtx, 
-					stack_pointer_rtx, 
+	  insn = emit_insn (gen_subsi3 (stack_pointer_rtx,
+					stack_pointer_rtx,
 					GEN_INT (255)));
 	  RTX_FRAME_RELATED_P (insn) = 1;
 	  i -= 255;
 	}
       if (i <= 255)
 	{
-	  insn = emit_insn (gen_subsi3 (stack_pointer_rtx, 
-					stack_pointer_rtx, 
+	  insn = emit_insn (gen_subsi3 (stack_pointer_rtx,
+					stack_pointer_rtx,
 					GEN_INT (i)));
 	  RTX_FRAME_RELATED_P (insn) = 1;
 	}
       else
 	{
-	  rtx reg = gen_rtx_REG (SImode, MOXIE_R12);
+	  rtx reg = gen_rtx_REG (SImode, TARN_R);
 	  insn = emit_move_insn (reg, GEN_INT (i));
 	  RTX_FRAME_RELATED_P (insn) = 1;
-	  insn = emit_insn (gen_subsi3 (stack_pointer_rtx, 
-					stack_pointer_rtx, 
+	  insn = emit_insn (gen_subsi3 (stack_pointer_rtx,
+					stack_pointer_rtx,
 					reg));
 	  RTX_FRAME_RELATED_P (insn) = 1;
 	}
@@ -328,19 +334,19 @@ moxie_expand_prologue (void)
 }
 
 void
-moxie_expand_epilogue (void)
+tarn_expand_epilogue (void)
 {
   int regno;
   rtx reg;
-
+  fprintf(stderr, "CALL: tarn_expand_epilogue\n");
   if (cfun->machine->callee_saved_reg_size != 0)
     {
-      reg = gen_rtx_REG (Pmode, MOXIE_R12);
+      reg = gen_rtx_REG (Pmode, TARN_R);
       if (cfun->machine->callee_saved_reg_size <= 255)
 	{
 	  emit_move_insn (reg, hard_frame_pointer_rtx);
-	  emit_insn (gen_subsi3 
-		     (reg, reg, 
+	  emit_insn (gen_subsi3
+		     (reg, reg,
 		      GEN_INT (cfun->machine->callee_saved_reg_size)));
 	}
       else
@@ -354,7 +360,7 @@ moxie_expand_epilogue (void)
 	    && df_regs_ever_live_p (regno))
 	  {
 	    rtx preg = gen_rtx_REG (Pmode, regno);
-	    emit_insn (gen_movsi_pop (reg, preg));
+	    emit_insn (gen_movqi_pop (reg, preg));
 	  }
     }
 
@@ -364,20 +370,22 @@ moxie_expand_epilogue (void)
 /* Implements the macro INITIAL_ELIMINATION_OFFSET, return the OFFSET.  */
 
 int
-moxie_initial_elimination_offset (int from, int to)
+tarn_initial_elimination_offset (int from, int to)
 {
   int ret;
-  
+  fprintf(stderr, "CALL: tarn_initial_elimination_offset\n");
+  return 0;
+
   if ((from) == FRAME_POINTER_REGNUM && (to) == HARD_FRAME_POINTER_REGNUM)
     {
       /* Compute this since we need to use cfun->machine->local_vars_size.  */
-      moxie_compute_frame ();
+      tarn_compute_frame ();
       ret = -cfun->machine->callee_saved_reg_size;
     }
   else if ((from) == ARG_POINTER_REGNUM && (to) == HARD_FRAME_POINTER_REGNUM)
     ret = 0x00;
   else
-    abort ();
+    gcc_unreachable ();
 
   return ret;
 }
@@ -385,26 +393,28 @@ moxie_initial_elimination_offset (int from, int to)
 /* Worker function for TARGET_SETUP_INCOMING_VARARGS.  */
 
 static void
-moxie_setup_incoming_varargs (cumulative_args_t cum_v,
+tarn_setup_incoming_varargs (cumulative_args_t cum_v,
 			      const function_arg_info &,
 			      int *pretend_size, int no_rtl)
 {
+  fprintf(stderr, "CALL: tarn_setup_incoming_varargs\n");
+
   CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
   int regno;
   int regs = 8 - *cum;
-  
+
   *pretend_size = regs < 0 ? 0 : GET_MODE_SIZE (SImode) * regs;
-  
+
   if (no_rtl)
     return;
-  
+
   for (regno = *cum; regno < 8; regno++)
     {
       rtx reg = gen_rtx_REG (SImode, regno);
       rtx slot = gen_rtx_PLUS (Pmode,
 			       gen_rtx_REG (SImode, ARG_POINTER_REGNUM),
 			       GEN_INT (UNITS_PER_WORD * (3 + (regno-2))));
-      
+
       emit_move_insn (gen_rtx_MEM (SImode, slot), reg);
     }
 }
@@ -413,7 +423,7 @@ moxie_setup_incoming_varargs (cumulative_args_t cum_v,
 /* Return the fixed registers used for condition codes.  */
 
 static bool
-moxie_fixed_condition_code_regs (unsigned int *p1, unsigned int *p2)
+tarn_fixed_condition_code_regs (unsigned int *p1, unsigned int *p2)
 {
   *p1 = CC_REG;
   *p2 = INVALID_REGNUM;
@@ -424,41 +434,53 @@ moxie_fixed_condition_code_regs (unsigned int *p1, unsigned int *p2)
    NULL_RTX if there's no more space.  */
 
 static rtx
-moxie_function_arg (cumulative_args_t cum_v, const function_arg_info &arg)
+tarn_function_arg (cumulative_args_t cum_v, const function_arg_info &arg)
 {
   CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
 
+  fprintf(stderr, "CALL: tarn_function_arg\n");
   if (*cum < 8)
     return gen_rtx_REG (arg.mode, *cum);
-  else 
+  else
     return NULL_RTX;
 }
 
-#define MOXIE_FUNCTION_ARG_SIZE(MODE, TYPE)	\
+#define TARN_FUNCTION_ARG_SIZE(MODE, TYPE)	\
   ((MODE) != BLKmode ? GET_MODE_SIZE (MODE)	\
    : (unsigned) int_size_in_bytes (TYPE))
 
 static void
-moxie_function_arg_advance (cumulative_args_t cum_v,
+tarn_function_arg_advance (cumulative_args_t cum_v,
 			    const function_arg_info &arg)
 {
   CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
 
-  *cum = (*cum < MOXIE_R6
-	  ? *cum + ((3 + MOXIE_FUNCTION_ARG_SIZE (arg.mode, arg.type)) / 4)
+  fprintf(stderr, "CALL: tarn_function_arg_advance\n");
+
+  *cum = (*cum < TARN__CUM
+	  ? *cum + ((3 + TARN_FUNCTION_ARG_SIZE (arg.mode, arg.type)) / 4)
 	  : *cum);
+}
+
+/* Returns true if push instructions will be used to pass outgoing arguments. */
+
+static bool
+tarn_push_argument (unsigned int npush)
+{
+    return true;
 }
 
 /* Return non-zero if the function argument described by ARG is to be
    passed by reference.  */
 
 static bool
-moxie_pass_by_reference (cumulative_args_t, const function_arg_info &arg)
+tarn_pass_by_reference (cumulative_args_t, const function_arg_info &arg)
 {
+  fprintf(stderr, "CALL: tarn_pass_by_reference\n");
   if (arg.aggregate_type_p ())
     return true;
   unsigned HOST_WIDE_INT size = arg.type_size_in_bytes ();
-  return size > 4*6;
+  return size > 1;
 }
 
 /* Some function arguments will only partially fit in the registers
@@ -466,15 +488,16 @@ moxie_pass_by_reference (cumulative_args_t, const function_arg_info &arg)
    that fit in argument passing registers.  */
 
 static int
-moxie_arg_partial_bytes (cumulative_args_t cum_v, const function_arg_info &arg)
+tarn_arg_partial_bytes (cumulative_args_t cum_v, const function_arg_info &arg)
 {
   CUMULATIVE_ARGS *cum = get_cumulative_args (cum_v);
   int bytes_left, size;
+  fprintf(stderr, "CALL: tarn_arg_partial_bytes\n");
 
   if (*cum >= 8)
     return 0;
 
-  if (moxie_pass_by_reference (cum_v, arg))
+  if (tarn_pass_by_reference (cum_v, arg))
     size = 4;
   else if (arg.type)
     {
@@ -496,9 +519,10 @@ moxie_arg_partial_bytes (cumulative_args_t cum_v, const function_arg_info &arg)
 /* Worker function for TARGET_STATIC_CHAIN.  */
 
 static rtx
-moxie_static_chain (const_tree ARG_UNUSED (fndecl_or_type), bool incoming_p)
+tarn_static_chain (const_tree ARG_UNUSED (fndecl_or_type), bool incoming_p)
 {
   rtx addr, mem;
+  fprintf(stderr, "CALL: tarn_static_chain\n");
 
   if (incoming_p)
     addr = plus_constant (Pmode, arg_pointer_rtx, 2 * UNITS_PER_WORD);
@@ -514,7 +538,7 @@ moxie_static_chain (const_tree ARG_UNUSED (fndecl_or_type), bool incoming_p)
 /* Worker function for TARGET_ASM_TRAMPOLINE_TEMPLATE.  */
 
 static void
-moxie_asm_trampoline_template (FILE *f)
+tarn_asm_trampoline_template (FILE *f)
 {
   fprintf (f, "\tpush  $sp, $r0\n");
   fprintf (f, "\tldi.l $r0, 0x0\n");
@@ -526,9 +550,11 @@ moxie_asm_trampoline_template (FILE *f)
 /* Worker function for TARGET_TRAMPOLINE_INIT.  */
 
 static void
-moxie_trampoline_init (rtx m_tramp, tree fndecl, rtx chain_value)
+tarn_trampoline_init (rtx m_tramp, tree fndecl, rtx chain_value)
 {
   rtx mem, fnaddr = XEXP (DECL_RTL (fndecl), 0);
+
+  fprintf(stderr, "CALL: tarn_trampoline_init\n");
 
   emit_block_move (m_tramp, assemble_trampoline_template (),
 		   GEN_INT (TRAMPOLINE_SIZE), BLOCK_OP_NORMAL);
@@ -541,7 +567,7 @@ moxie_trampoline_init (rtx m_tramp, tree fndecl, rtx chain_value)
 
 /* Return true for memory offset addresses between -32768 and 32767.  */
 bool
-moxie_offset_address_p (rtx x)
+tarn_offset_address_p (rtx x)
 {
   x = XEXP (x, 0);
 
@@ -557,17 +583,17 @@ moxie_offset_address_p (rtx x)
   return 0;
 }
 
-/* Helper function for `moxie_legitimate_address_p'.  */
+/* Helper function for `tarn_legitimate_address_p'.  */
 
 static bool
-moxie_reg_ok_for_base_p (const_rtx reg, bool strict_p)
+tarn_reg_ok_for_base_p (const_rtx reg, bool strict_p)
 {
   int regno = REGNO (reg);
 
   if (strict_p)
     return HARD_REGNO_OK_FOR_BASE_P (regno)
 	   || HARD_REGNO_OK_FOR_BASE_P (reg_renumber[regno]);
-  else    
+  else
     return !HARD_REGISTER_NUM_P (regno)
 	   || HARD_REGNO_OK_FOR_BASE_P (regno);
 }
@@ -575,7 +601,7 @@ moxie_reg_ok_for_base_p (const_rtx reg, bool strict_p)
 /* Worker function for TARGET_LEGITIMATE_ADDRESS_P.  */
 
 static bool
-moxie_legitimate_address_p (machine_mode mode ATTRIBUTE_UNUSED,
+tarn_legitimate_address_p (machine_mode mode ATTRIBUTE_UNUSED,
 			    rtx x, bool strict_p,
 			    addr_space_t as)
 {
@@ -583,17 +609,34 @@ moxie_legitimate_address_p (machine_mode mode ATTRIBUTE_UNUSED,
 
   if (GET_CODE(x) == PLUS
       && REG_P (XEXP (x, 0))
-      && moxie_reg_ok_for_base_p (XEXP (x, 0), strict_p)
+      && tarn_reg_ok_for_base_p (XEXP (x, 0), strict_p)
       && CONST_INT_P (XEXP (x, 1))
       && IN_RANGE (INTVAL (XEXP (x, 1)), -32768, 32767))
     return true;
-  if (REG_P (x) && moxie_reg_ok_for_base_p (x, strict_p))
+  if (REG_P (x) && tarn_reg_ok_for_base_p (x, strict_p))
     return true;
   if (GET_CODE (x) == SYMBOL_REF
       || GET_CODE (x) == LABEL_REF
       || GET_CODE (x) == CONST)
     return true;
   return false;
+}
+
+
+void
+tarn_expand_movqi_mem_const(rtx addr, rtx value) {
+  /* If this is a store, force the value into a register.  */
+    emit_insn (gen_movqi (gen_rtx_REG (QImode, TARN_ADH), GEN_INT (55)));
+    emit_insn (gen_movqi (gen_rtx_REG (QImode, TARN_ADL), GEN_INT (66)));
+  /*
+     # TODO: set address
+     mov\\tmem il ,%1
+   */
+
+}
+
+bool tarn_hard_regno_mode_ok(unsigned int regno, machine_mode mode) {
+    return GET_MODE_SIZE (mode) == 1;
 }
 
 /* The Global `targetm' Variable.  */
@@ -604,61 +647,67 @@ moxie_legitimate_address_p (machine_mode mode ATTRIBUTE_UNUSED,
 #define TARGET_PROMOTE_PROTOTYPES	hook_bool_const_tree_true
 
 #undef  TARGET_RETURN_IN_MEMORY
-#define TARGET_RETURN_IN_MEMORY		moxie_return_in_memory
+#define TARGET_RETURN_IN_MEMORY		tarn_return_in_memory
 #undef  TARGET_MUST_PASS_IN_STACK
 #define TARGET_MUST_PASS_IN_STACK	must_pass_in_stack_var_size
 #undef  TARGET_PASS_BY_REFERENCE
-#define TARGET_PASS_BY_REFERENCE        moxie_pass_by_reference
+#define TARGET_PASS_BY_REFERENCE        tarn_pass_by_reference
 #undef  TARGET_ARG_PARTIAL_BYTES
-#define TARGET_ARG_PARTIAL_BYTES        moxie_arg_partial_bytes
+#define TARGET_ARG_PARTIAL_BYTES        tarn_arg_partial_bytes
 #undef  TARGET_FUNCTION_ARG
-#define TARGET_FUNCTION_ARG		moxie_function_arg
+#define TARGET_FUNCTION_ARG		tarn_function_arg
 #undef  TARGET_FUNCTION_ARG_ADVANCE
-#define TARGET_FUNCTION_ARG_ADVANCE	moxie_function_arg_advance
+#define TARGET_FUNCTION_ARG_ADVANCE	tarn_function_arg_advance
 
 #undef TARGET_LRA_P
 #define TARGET_LRA_P hook_bool_void_false
 
 #undef  TARGET_ADDR_SPACE_LEGITIMATE_ADDRESS_P
-#define TARGET_ADDR_SPACE_LEGITIMATE_ADDRESS_P	moxie_legitimate_address_p
+#define TARGET_ADDR_SPACE_LEGITIMATE_ADDRESS_P	tarn_legitimate_address_p
 
 #undef  TARGET_SETUP_INCOMING_VARARGS
-#define TARGET_SETUP_INCOMING_VARARGS 	moxie_setup_incoming_varargs
+#define TARGET_SETUP_INCOMING_VARARGS 	tarn_setup_incoming_varargs
 
 #undef	TARGET_FIXED_CONDITION_CODE_REGS
-#define	TARGET_FIXED_CONDITION_CODE_REGS moxie_fixed_condition_code_regs
+#define	TARGET_FIXED_CONDITION_CODE_REGS tarn_fixed_condition_code_regs
 
 /* Define this to return an RTX representing the place where a
    function returns or receives a value of data type RET_TYPE, a tree
    node representing a data type.  */
 #undef TARGET_FUNCTION_VALUE
-#define TARGET_FUNCTION_VALUE moxie_function_value
+#define TARGET_FUNCTION_VALUE tarn_function_value
 #undef TARGET_LIBCALL_VALUE
-#define TARGET_LIBCALL_VALUE moxie_libcall_value
+#define TARGET_LIBCALL_VALUE tarn_libcall_value
 #undef TARGET_FUNCTION_VALUE_REGNO_P
-#define TARGET_FUNCTION_VALUE_REGNO_P moxie_function_value_regno_p
+#define TARGET_FUNCTION_VALUE_REGNO_P tarn_function_value_regno_p
 
 #undef TARGET_FRAME_POINTER_REQUIRED
-#define TARGET_FRAME_POINTER_REQUIRED hook_bool_void_true
+#define TARGET_FRAME_POINTER_REQUIRED hook_bool_void_false
 
 #undef TARGET_STATIC_CHAIN
-#define TARGET_STATIC_CHAIN moxie_static_chain
+#define TARGET_STATIC_CHAIN tarn_static_chain
 #undef TARGET_ASM_TRAMPOLINE_TEMPLATE
-#define TARGET_ASM_TRAMPOLINE_TEMPLATE moxie_asm_trampoline_template
+#define TARGET_ASM_TRAMPOLINE_TEMPLATE tarn_asm_trampoline_template
 #undef TARGET_TRAMPOLINE_INIT
-#define TARGET_TRAMPOLINE_INIT moxie_trampoline_init
+#define TARGET_TRAMPOLINE_INIT tarn_trampoline_init
 
 #undef TARGET_OPTION_OVERRIDE
-#define TARGET_OPTION_OVERRIDE moxie_option_override
+#define TARGET_OPTION_OVERRIDE tarn_option_override
 
 #undef  TARGET_PRINT_OPERAND
-#define TARGET_PRINT_OPERAND moxie_print_operand
+#define TARGET_PRINT_OPERAND tarn_print_operand
 #undef  TARGET_PRINT_OPERAND_ADDRESS
-#define TARGET_PRINT_OPERAND_ADDRESS moxie_print_operand_address
+#define TARGET_PRINT_OPERAND_ADDRESS tarn_print_operand_address
 
 #undef  TARGET_CONSTANT_ALIGNMENT
 #define TARGET_CONSTANT_ALIGNMENT constant_alignment_word_strings
 
+#undef TARGET_PUSH_ARGUMENT
+#define TARGET_PUSH_ARGUMENT tarn_push_argument
+
+#undef TARGET_HARD_REGNO_MODE_OK
+#define TARGET_HARD_REGNO_MODE_OK tarn_hard_regno_mode_ok
+
 struct gcc_target targetm = TARGET_INITIALIZER;
 
-#include "gt-moxie.h"
+#include "gt-tarn.h"

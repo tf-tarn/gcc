@@ -1,6 +1,6 @@
 ;; Machine description for Moxie
 ;; Copyright (C) 2009-2021 Free Software Foundation, Inc.
-;; Contributed by Anthony Green <green@moxielogic.com>
+;; Contributed by Anthony Green <green@tarnlogic.com>
 
 ;; This file is part of GCC.
 
@@ -41,22 +41,32 @@
 ;; Arithmetic instructions
 ;; -------------------------------------------------------------------------
 
-(define_insn "addsi3"
-  [(set (match_operand:SI 0 "register_operand" "=r,r,r")
-	  (plus:SI
-	   (match_operand:SI 1 "register_operand" "0,0,0")
-	   (match_operand:SI 2 "moxie_add_operand" "I,N,r")))]
+(define_insn "addqi3"
+  [(set (match_operand:QI 0 "nonimmediate_operand" "=X,X")
+	  (plus:QI
+	   (match_operand:QI 1 "nonimmediate_operand" "0,0")
+	   (match_operand:QI 2 "tarn_add_operand" "I,r")))]
   ""
-  "@
+  "
   inc\\t%0, %2
   dec\\t%0, -%2
   add\\t%0, %2")
+
+(define_expand "addsi3"
+  [(set (match_operand:SI 0 "register_operand" "=r,r,r")
+	  (plus:SI
+	   (match_operand:SI 1 "register_operand" "0,0,0")
+	   (match_operand:SI 2 "tarn_add_operand" "I,N,r")))]
+  ""
+  {
+        // TODO: implement me
+  })
 
 (define_insn "subsi3"
   [(set (match_operand:SI 0 "register_operand" "=r,r")
 	  (minus:SI
 	   (match_operand:SI 1 "register_operand" "0,0")
-	   (match_operand:SI 2 "moxie_sub_operand" "I,r")))]
+	   (match_operand:SI 2 "tarn_sub_operand" "I,r")))]
   ""
   "@
   dec\\t%0, %2
@@ -160,6 +170,15 @@
   return "and\\t%0, %2";
 })
 
+(define_insn "andqi3"
+  [(set (match_operand:QI 0 "register_operand" "=R")
+	(and:QI (match_operand:QI 1 "immediate_operand" "i")
+		(match_operand:QI 2 "immediate_operand" "A")))]
+  ""
+{
+  return "and\\t%0, %2";
+})
+
 (define_insn "xorsi3"
   [(set (match_operand:SI 0 "register_operand" "=r")
 	(xor:SI (match_operand:SI 1 "register_operand" "0")
@@ -215,17 +234,32 @@
 
 ;; SImode
 
+(define_constants
+  [(STACK_REG 19)])
+
 ;; Push a register onto the stack
-(define_insn "movsi_push"
-  [(set (mem:SI (pre_dec:SI (reg:SI 1)))
-  	(match_operand:SI 0 "register_operand" "r"))]
+(define_insn "movqi_push"
+  [(set (reg:QI STACK_REG)
+  	(match_operand:QI 0 "register_operand" "r"))]
+  ""
+  "mov\\tstack %0 ,0")
+
+;; Push a register onto the stack
+(define_insn "movhi_push"
+  [(set (reg:QI STACK_REG)
+  	(and:QI
+          (ashift:QI (match_operand:HI 0 "register_operand" "r") (const_int 8))
+          (const_int 255)))
+   (set (reg:QI STACK_REG)
+  	(and:QI (const_int 255)
+          (match_dup:HI 0)))]
   ""
   "push\\t$sp, %0")
 
 ;; Pop a register from the stack
-(define_insn "movsi_pop"
-  [(set (match_operand:SI 1 "register_operand" "=r")
-  	(mem:SI (post_inc:SI (match_operand:SI 0 "register_operand" "r"))))]
+(define_insn "movqi_pop"
+  [(set (match_operand:QI 1 "register_operand" "=r")
+  	(mem:QI (post_inc:QI (match_operand:QI 0 "register_operand" "r"))))]
   ""
   "pop\\t%0, %1")
 
@@ -244,7 +278,7 @@
       if (MEM_P (XEXP (operands[0], 0)))
         operands[0] = gen_rtx_MEM (SImode, force_reg (SImode, XEXP (operands[0], 0)));
     }
-    else 
+    else
       if (MEM_P (operands[1])
           && MEM_P (XEXP (operands[1], 0)))
         operands[1] = gen_rtx_MEM (SImode, force_reg (SImode, XEXP (operands[1], 0)));
@@ -253,7 +287,7 @@
 
 (define_insn "*movsi"
   [(set (match_operand:SI 0 "nonimmediate_operand" "=r,r,r,W,A,r,r,B,r")
-	(match_operand:SI 1 "moxie_general_movsrc_operand" "O,r,i,r,r,W,A,r,B"))]
+	(match_operand:SI 1 "tarn_general_movsrc_operand" "O,r,i,r,r,W,A,r,B"))]
   "register_operand (operands[0], SImode)
    || register_operand (operands[1], SImode)"
   "@
@@ -294,7 +328,7 @@
   [(set (match_operand:SI 0 "register_operand" "=r")
 	(sign_extend:SI (match_operand:QI 1 "nonimmediate_operand" "r")))]
   ""
-  "@
+  "
    sex.b\\t%0, %1"
   [(set_attr "length" "2")])
 
@@ -302,7 +336,7 @@
   [(set (match_operand:SI 0 "register_operand" "=r")
 	(sign_extend:SI (match_operand:HI 1 "nonimmediate_operand" "r")))]
   ""
-  "@
+  "
    sex.s\\t%0, %1"
   [(set_attr "length" "2")])
 
@@ -312,27 +346,80 @@
   ""
   "
 {
-  /* If this is a store, force the value into a register.  */
-  if (MEM_P (operands[0]))
-    operands[1] = force_reg (QImode, operands[1]);
-}")
+  /* If we are writing to memory, load the address registers. */
+  if (MEM_P (operands[0])) {
+    rtx addr = XEXP(operands[0], 0);
+    if (CONST_INT_P(addr)) {
+      int v = INTVAL(addr);
+      emit_insn (gen_movqi_impl (gen_rtx_REG (QImode, TARN_ADH), GEN_INT((v >> 8) & 0xff)));
+      emit_insn (gen_movqi_impl (gen_rtx_REG (QImode, TARN_ADL), GEN_INT(v & 0xff)));
+    } else if (SYMBOL_REF_P(addr)) {
+      emit_insn (gen_movqisi_upper_impl (
+        gen_rtx_REG (QImode, TARN_ADL),
+        addr,
+        gen_rtx_REG (QImode, TARN_ADH)));
+      //emit_insn (gen_movqisi_impl (gen_rtx_REG (QImode, TARN_ADL), addr));
+    } else {
+      fprintf(stderr, \"movqi: unhandled MEM operand type %d\", GET_CODE (addr));
+    }
+  }
+}"
+)
 
-(define_insn "*movqi"
-  [(set (match_operand:QI 0 "nonimmediate_operand" "=r,r,r,W,A,r,r,B,r")
-	(match_operand:QI 1 "moxie_general_movsrc_operand" "O,r,i,r,r,W,A,r,B"))]
-  "register_operand (operands[0], QImode)
-   || register_operand (operands[1], QImode)"
+;; (define_insn "truncatesiqi"
+;;    [(truncate:QI (match_operand:SI 0 "general_operand" ""))]
+;; ""
+;; "")
+
+(define_insn "movqisi_upper_impl"
+             [(parallel
+               [(set
+                 (match_operand:QI 0 "nonimmediate_operand"        "=R")
+                 (truncate:QI (match_operand:SI 1 "tarn_general_movsrc_operand" "i")))
+                (set
+                 (match_operand:QI 2 "nonimmediate_operand"        "=R")
+                 (truncate:QI (match_dup 1)))])]
+  ""
+  "
+  mov\\t%0 il ,lo8(%1)
+  mov\\t%2 il ,hi8(%1)"
+)
+
+(define_insn "movqi_impl"
+  [(set (match_operand:QI 0 "nonimmediate_operand"        "=R,R,R,W,A,A,R,R,B,R")
+	(match_operand:QI 1 "tarn_general_movsrc_operand" " O,r,i,r,r,i,W,A,r,B"))]
+  ""
   "@
-   xor\\t%0, %0
-   mov\\t%0, %1
-   ldi.b\\t%0, %1
+   mov\\t%0 zero ,0
+   mov\\t%0 %1 ,0
+   mov\\t%0 il ,%1
    st.b\\t%0, %1
-   sta.b\\t%0, %1
+   mov\\tmem %1 ,0
+   mov\\tmem il ,%1
    ld.b\\t%0, %1
    lda.b\\t%0, %1
    sto.b\\t%0, %1
    ldo.b\\t%0, %1"
-  [(set_attr "length"	"2,2,6,2,6,2,6,4,4")])
+  ;;[(set_attr "length"	"2,2,2,2,2,2,2,2,2")]
+  )
+
+(define_insn "movqisi_impl"
+  [(set (match_operand:QI 0 "nonimmediate_operand"                     "=R,R,R,W,A,A,R,R,B,R")
+	(truncate:QI (match_operand:SI 1 "tarn_general_movsrc_operand" " O,r,i,r,r,i,W,A,r,B")))]
+  ""
+  "@
+   mov\\t%0 zero ,0
+   mov\\t%0 %1 ,0
+   mov\\t%0 il ,%1
+   st.b\\t%0, %1
+   mov\\tmem %1 ,0
+   mov\\tmem il ,%1
+   ld.b\\t%0, %1
+   lda.b\\t%0, %1
+   sto.b\\t%0, %1
+   ldo.b\\t%0, %1"
+  ;;[(set_attr "length"	"2,2,2,2,2,2,2,2,2")]
+  )
 
 (define_expand "movhi"
   [(set (match_operand:HI 0 "general_operand" "")
@@ -345,9 +432,9 @@
     operands[1] = force_reg (HImode, operands[1]);
 }")
 
-(define_insn "*movhi"
+(define_insn "*moxxxvhi"
   [(set (match_operand:HI 0 "nonimmediate_operand" "=r,r,r,W,A,r,r,B,r")
-	(match_operand:HI 1 "moxie_general_movsrc_operand" "O,r,i,r,r,W,A,r,B"))]
+	(match_operand:HI 1 "tarn_general_movsrc_operand" "O,r,i,r,r,W,A,r,B"))]
   "(register_operand (operands[0], HImode)
     || register_operand (operands[1], HImode))"
   "@
@@ -402,11 +489,11 @@
 ;; -------------------------------------------------------------------------
 
 (define_code_iterator cond [ne eq lt ltu gt gtu ge le geu leu])
-(define_code_attr CC [(ne "ne") (eq "eq") (lt "lt") (ltu "ltu") 
-		      (gt "gt") (gtu "gtu") (ge "ge") (le "le") 
+(define_code_attr CC [(ne "ne") (eq "eq") (lt "lt") (ltu "ltu")
+		      (gt "gt") (gtu "gtu") (ge "ge") (le "le")
 		      (geu "geu") (leu "leu") ])
-(define_code_attr rCC [(ne "eq") (eq "ne") (lt "ge") (ltu "geu") 
-		       (gt "le") (gtu "leu") (ge "lt") (le "gt") 
+(define_code_attr rCC [(ne "eq") (eq "ne") (lt "ge") (ltu "geu")
+		       (gt "le") (gtu "leu") (ge "lt") (le "gt")
 		       (geu "ltu") (leu "gtu") ])
 
 (define_insn "*b<cond:code>"
@@ -496,7 +583,7 @@
   ""
   "
 {
-  moxie_expand_prologue ();
+  tarn_expand_prologue ();
   DONE;
 }
 ")
@@ -506,7 +593,7 @@
   ""
   "
 {
-  moxie_expand_epilogue ();
+  tarn_expand_epilogue ();
   DONE;
 }
 ")
@@ -514,4 +601,4 @@
 (define_insn "returner"
   [(return)]
   "reload_completed"
-  "ret")
+  "#TODO: implement return")

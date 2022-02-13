@@ -180,7 +180,7 @@
 #			the --with-sysroot configure option or the
 #			--sysroot command line option is used this
 #			will be relative to the sysroot.
-# target_type_format_char 
+# target_type_format_char
 # 			The default character to be used for formatting
 #			the attribute in a
 #			.type symbol_name, ${t_t_f_c}<property>
@@ -372,6 +372,9 @@ ft32*)	cpu_type=ft32
 	target_has_targetm_common=no
 	;;
 moxie*)	cpu_type=moxie
+	target_has_targetm_common=no
+	;;
+tarn*)	cpu_type=tarn
 	target_has_targetm_common=no
 	;;
 fido-*-*)
@@ -1688,6 +1691,12 @@ moxie-*-elf)
 	gnu_ld=yes
 	tm_file="dbxelf.h elfos.h newlib-stdint.h ${tm_file}"
 	tmake_file="${tmake_file} moxie/t-moxie"
+	;;
+tarn-*-elf32)
+	gas=yes
+	gnu_ld=yes
+	tm_file="dbxelf.h elfos.h newlib-stdint.h ${tm_file}"
+	tmake_file="${tmake_file} tarn/t-tarn"
 	;;
 moxie-*-uclinux*)
 	gas=yes

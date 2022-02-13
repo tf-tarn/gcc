@@ -1,6 +1,6 @@
-/* Definitions for the moxiebox.
+/* Definitions for the tarnbox.
    Copyright (C) 2014-2021 Free Software Foundation, Inc.
-   Contributed by Anthony Green (green@moxielogic.com)
+   Contributed by Anthony Green (green@tarnlogic.com)
 
 This file is part of GCC.
 
@@ -22,15 +22,15 @@ along with GCC; see the file COPYING3.  If not see
 #define TARGET_OS_CPP_BUILTINS()		\
   do						\
     {						\
-      builtin_define_std ("moxie");		\
-      builtin_define ("__moxiebox__");		\
-      builtin_assert ("system=moxiebox");	\
+      builtin_define_std ("tarn");		\
+      builtin_define ("__tarnbox__");		\
+      builtin_assert ("system=tarnbox");	\
     }						\
   while (0)
 
 #undef LIB_SPEC
 #define LIB_SPEC \
-"%{!T*:-Tmoxiebox.ld} \
+"%{!T*:-Ttarnbox.ld} \
  %{!nostdlib: --start-group -lsandboxrt -lc -lgcc --end-group }"
 
 #undef LINK_SPEC
@@ -52,4 +52,4 @@ along with GCC; see the file COPYING3.  If not see
 #undef WCHAR_TYPE
 #undef WCHAR_TYPE_SIZE
 
-#define TARGET_MOXIEBOX
+#define TARGET_TARNBOX

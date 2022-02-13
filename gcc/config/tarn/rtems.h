@@ -1,6 +1,6 @@
 /* Definitions for rtems targeting the Moxie core.
    Copyright (C) 2010-2021 Free Software Foundation, Inc.
-   Contributed by Anthony Green (green@moxielogic.com)
+   Contributed by Anthony Green (green@tarnlogic.com)
 
    This file is part of GCC.
 
@@ -27,7 +27,7 @@
 #define TARGET_OS_CPP_BUILTINS()		\
   do						\
     {						\
-      builtin_define_std ("moxie");		\
+      builtin_define_std ("tarn");		\
       builtin_define ("__rtems__");		\
       builtin_assert ("system=rtems");		\
     }						\
